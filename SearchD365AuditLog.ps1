@@ -22,7 +22,7 @@ Param(
     [string] [Parameter(Mandatory = $true)]  $OutputFile,
     [DateTime] [Parameter(Mandatory = $true)]  $StartDate,
     [DateTime] [Parameter(Mandatory = $true)]  $EndDate,
-    [string] [Parameter(Mandatory = $true)]  $InstanceUrl
+    [string] [Parameter(Mandatory = $false)]  $InstanceUrl
 )
 
 # Required Modules (installed as admin)
@@ -89,8 +89,11 @@ while ($true)
     do
     {
         $results = Search-UnifiedAuditLog -StartDate $currentStart -EndDate $currentEnd -RecordType $record -SessionId $sessionID -SessionCommand ReturnLargeSet -ResultSize $resultSize
-        #Filter the audit log records by Instance URL provided
-        $results = $results | ? { ($_.AuditData | ConvertFrom-Json).InstanceUrl -eq $instanceUrl }
+        
+        if (-Not [string]::IsNullOrEmpty($InstanceUrl)) {
+            #Filter the audit log records by Instance URL provided
+            $results = $results | ? { ($_.AuditData | ConvertFrom-Json).InstanceUrl -eq $instanceUrl }
+        }
         $resultList = @()
 
         foreach ($result in $results)
