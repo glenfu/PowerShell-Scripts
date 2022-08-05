@@ -14,59 +14,47 @@
 # and (iii) to indemnify, hold harmless, and defend Us and Our suppliers from and against any claims or lawsuits, including attorneys’ fees, that arise or result from the use or distribution of the Sample Code 
 
 #Disable-PluginSteps.ps1
-#How to run script: .\Disable-PluginSteps.ps1 TenantID <tenantId> -ApplicationID <Application ID> -ClientSecret <client secret> -PluginName <plugin name / prefix> -Enabled <true to enable plugin steps, false to disable plugin steps)
+#How to run script: .\Disable-PluginSteps.ps1 -ServerURL <Server URL> -ApplicationID <Application ID> -ClientSecret <client secret> -PluginName <plugin name / prefix> -Enabled <true to enable plugin steps, false to disable plugin steps)
 
 Param(
-    [string] [Parameter(Mandatory = $true)]  $TenantID,
+    [string] [Parameter(Mandatory = $true)]  $ServerURL,
     [string] [Parameter(Mandatory = $true)]  $ApplicationID,
     [string] [Parameter(Mandatory = $true)]  $ClientSecret,
     [string] [Parameter(Mandatory = $true)]  $PluginName,
     [string] [Parameter(Mandatory = $true)]  $Enabled
 )
 
-function EnablePluginStep
-{
+function EnablePluginStep {
     param
     (
         [Guid] $StepId    
     )
 
     Set-CrmRecordState -EntityLogicalName sdkmessageprocessingstep -Id $StepId `
-    -StateCode Enabled -StatusCode Enabled
+        -StateCode Enabled -StatusCode Enabled
 }
 
-function DisablePluginStep
-{
+function DisablePluginStep {
     param
     (
         [Guid] $StepId    
     )
 
     Set-CrmRecordState -EntityLogicalName sdkmessageprocessingstep -Id $StepId `
-    -StateCode Disabled -StatusCode Disabled
+        -StateCode Disabled -StatusCode Disabled
 }
 
-#Script Initialization
-Write-Host "Check and install missing PowerShell Modules..." -ForegroundColor Green
-
-(Get-Module -Name 'Microsoft.PowerApps.Administration.PowerShell' -ListAvailable) -or (Install-Module -Name Microsoft.PowerApps.Administration.PowerShell -Scope AllUsers -Repository PSGallery -Force -AllowClobber) | Out-Null
-(Get-Module -Name 'Microsoft.Xrm.Data.Powershell' -ListAvailable) -or (Install-Module -Name Microsoft.PowerApps.PowerShell -Scope AllUsers -Repository PSGallery -Force -AllowClobber) | Out-Null
-
-
-Try
-{
-    Write-Host "Authenticating as service principal..." -ForegroundColor Green
-    Add-PowerAppsAccount -Endpoint prod -TenantID $TenantID -ApplicationId $ApplicationID -ClientSecret $ClientSecret -Verbose
+Try {
+    Connect-CrmOnline -ServerUrl $ServerURL -ClientSecret $ClientSecret -OAuthClientId $ApplicationID                
 }
-Catch
-{
-     throw
+Catch {
+    throw
 }
 
 # First of all, filter all custom assemblies by plugin name prefix
 $assemblies = Get-CrmRecords -conn $conn -EntityLogicalName pluginassembly `
--FilterAttribute name -FilterOperator like -FilterValue $PluginName `
--Fields * -WarningAction SilentlyContinue
+    -FilterAttribute name -FilterOperator like -FilterValue $PluginName `
+    -Fields * -WarningAction SilentlyContinue
 
 # Display retrieved assemblies name
 $assemblies.CrmRecords | select name
@@ -75,46 +63,37 @@ $assemblies.CrmRecords | select name
 $steps = New-Object System.Collections.Generic.List[object]
 
 # Loop all assemblies to get steps. 
-foreach($assembly in $assemblies.CrmRecords)
-{
+foreach ($assembly in $assemblies.CrmRecords) {
     Write-Host 'Getting Steps for' $assembly.name
 
     # Get all registered steps for the assembly
     $sdkmessages = Get-CrmSdkMessageProcessingStepsForPluginAssembly `
-    -conn $conn -PluginAssemblyName $assembly.name -WarningAction SilentlyContinue
+        -conn $conn -PluginAssemblyName $assembly.name -WarningAction SilentlyContinue
     
-    if ($Enabled -ne $true)
-    {
+    if ($Enabled -ne $true) {
         # Add only enabled step to the list
-        foreach($enabledStep in ($sdkmessages | ? {$_.statecode -eq 'Enabled'}))
-        {
+        foreach ($enabledStep in ($sdkmessages | ? { $_.statecode -eq 'Enabled' })) {
             $steps.Add($enabledStep)
         }
     }
-    else 
-    {
+    else {
         # Add only disabled step to the list
-        foreach($enabledStep in ($sdkmessages | ? {$_.statecode -eq 'Disabled'}))
-        {
+        foreach ($enabledStep in ($sdkmessages | ? { $_.statecode -eq 'Disabled' })) {
             $steps.Add($enabledStep)
         }
     }
 }
 
-if ($Enabled -ne $true)
-{
+if ($Enabled -ne $true) {
     # Disable all enabled steps.
-    foreach($step in $steps)
-    {
+    foreach ($step in $steps) {
         Write-Host 'Disabled' $step.name
         DisablePluginStep -StepId $step.sdkmessageprocessingstepid
     }
 }
-else 
-{
+else {
     # Enable all disabled steps.
-    foreach($step in $steps)
-    {
+    foreach ($step in $steps) {
         Write-Host 'Enabled' $step.name
         EnablePluginStep -StepId $step.sdkmessageprocessingstepid
     }
