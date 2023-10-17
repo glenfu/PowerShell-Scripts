@@ -1,5 +1,5 @@
 # Author: Glen Fu
-# Date: 19/07/2023
+# Date: 17/10/2023
 # Version: 1.0
 # Copyright © Microsoft Corporation.  All Rights Reserved.
 # This code released under the terms of the 
@@ -34,10 +34,15 @@ Write-Host "Check and install missing ExchangeOnlineManagement Module..." -Foreg
 $adminPW = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
 $adminCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ($AdminUsername, $adminPW)
 
-Write-Host "Sign in Power Apps account as $AdminUsername" -ForegroundColor Green
+# Write-Host "Sign in Power Apps account as $AdminUsername" -ForegroundColor Green
 
 Try {
     $connected = Connect-ExchangeOnline -Credential $adminCredential
+    # $AppId = "250744d1-c3fb-47c7-824d-abf9cd288e2c"
+    # $CertificateThumbprint = "272154ADB1F310DD483796961ACA68831CF9930F"
+    # $Organization = "pfecrmonline.onmicrosoft.com"
+
+    # Connect-ExchangeOnline -AppId $AppId -CertificateThumbprint $CertificateThumbprint -Organization $Organization -ShowBanner:$false
 }
 Catch {
     throw
@@ -54,8 +59,8 @@ $intervalMinutes = 60
 [DateTime]$currentStart = $start
 [DateTime]$currentEnd = $start
 
-Function Write-LogFile ([String]$Message) {
-    $final = [DateTime]::Now.ToUniversalTime().ToString("s") + ":" + $Message
+Function Write-LogFile ([String]$LogMessage) {
+    $final = [DateTime]::Now.ToUniversalTime().ToString("s") + ":" + $LogMessage
     $final | Out-File $LogFile -Append
 }
 
@@ -147,14 +152,14 @@ while ($true) {
         if (($resultList | Measure-Object).Count -ne 0) {
             $resultList | export-csv -Path $OutputFile -Append -NoTypeInformation
 
-            $currentTotal = $resultList[0].ResultCount
+            $currentTotal = $resultList.Count
             $totalCount += $resultList.Count
             $currentCount += $resultList.Count
             Write-LogFile "INFO: Retrieved $($currentCount) audit records out of the total $($currentTotal)"
 
-            if ($currentTotal -eq $resultList[$resultList.Count - 1].ResultIndex) {
-                $message = "INFO: Successfully retrieved $($currentTotal) audit records for the current time range. Moving on!"
-                Write-LogFile $message
+            if ($currentTotal -eq $resultList.Count) {
+                $logmessage = "INFO: Successfully retrieved $($currentTotal) audit records for the current time range. Moving on!"
+                Write-LogFile $logmessage
                 Write-Host "Successfully retrieved $($currentTotal) audit records for the current time range. Moving on to the next interval." -foregroundColor Yellow
                 ""
                 break
