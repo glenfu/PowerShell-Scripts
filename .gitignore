@@ -1,3 +1,5 @@
 *.csv
 *.txt
 O365API.ps1
+*.cer
+*.pfx

@@ -1,5 +1,5 @@
 # Author: Glen Fu
-# Date: 17/10/2023
+# Date: 18/10/2023
 # Version: 1.0
 # Copyright © Microsoft Corporation.  All Rights Reserved.
 # This code released under the terms of the 
@@ -34,15 +34,8 @@ Write-Host "Check and install missing ExchangeOnlineManagement Module..." -Foreg
 $adminPW = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
 $adminCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ($AdminUsername, $adminPW)
 
-# Write-Host "Sign in Power Apps account as $AdminUsername" -ForegroundColor Green
-
 Try {
     $connected = Connect-ExchangeOnline -Credential $adminCredential
-    # $AppId = "250744d1-c3fb-47c7-824d-abf9cd288e2c"
-    # $CertificateThumbprint = "272154ADB1F310DD483796961ACA68831CF9930F"
-    # $Organization = "pfecrmonline.onmicrosoft.com"
-
-    # Connect-ExchangeOnline -AppId $AppId -CertificateThumbprint $CertificateThumbprint -Organization $Organization -ShowBanner:$false
 }
 Catch {
     throw
@@ -53,7 +46,7 @@ Catch {
 [DateTime]$end = $EndDate
 $record = "CRM"
 $resultSize = 5000
-$intervalMinutes = 60
+$intervalMinutes = 30
 
 #Start script
 [DateTime]$currentStart = $start
@@ -142,9 +135,6 @@ while ($true) {
             | Add-Member -PassThru -MemberType NoteProperty -Name ServiceName -Value $auditData.ServiceName `
             | Add-Member -PassThru -MemberType NoteProperty -Name SystemUserId -Value $auditData.SystemUserId `
             | Add-Member -PassThru -MemberType NoteProperty -Name UserUpn -Value $auditData.UserUpn
-            # | Add-Member -PassThru -MemberType NoteProperty -Name PSComputerName -Value $result.PSComputerName `
-            # | Add-Member -PassThru -MemberType NoteProperty -Name PSShowComputerName -Value $result.PSShowComputerName `
-            # | Add-Member -PassThru -MemberType NoteProperty -Name RunspaceId -Value $result.RunspaceId `
             
             $resultList += $resultDetail
         }
