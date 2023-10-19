@@ -1,5 +1,5 @@
 # Author: Glen Fu
-# Date: 18/10/2023
+# Date: 19/10/2023
 # Version: 1.0
 # Copyright © Microsoft Corporation.  All Rights Reserved.
 # This code released under the terms of the 
@@ -14,7 +14,7 @@
 # and (iii) to indemnify, hold harmless, and defend Us and Our suppliers from and against any claims or lawsuits, including attorneys’ fees, that arise or result from the use or distribution of the Sample Code 
 
 #SearchD365AuditLog.ps1
-#How to run script: .\SearchD365AuditLog.ps1 -AdminUsername <admin username> -AdminPassword <password> -LogFile <.\AdminLogFile_YYYYMMDDHHMM.txt> -OutputFile <.\AdminOutputFile_YYYYMMDDHHMM.csv> -StartDate (Get-Date<'DD/MM/YYYY HH:MM'>) -EndDate (Get-Date<'DD/MM/YYYY HH:MM'>) -InstanceUrl <Dynamics 365 environment URL> -Message <Retrieve/RetrieveMultiple> -EntityName <contact>
+#How to run script: .\SearchD365AuditLog.ps1 -AdminUsername <admin username> -AdminPassword <password> -LogFile <.\AdminLogFile_YYYYMMDDHHMM.txt> -OutputFile <.\AdminOutputFile_YYYYMMDDHHMM.csv> -StartDate (Get-Date<'DD/MM/YYYY HH:MM'>) -EndDate (Get-Date<'DD/MM/YYYY HH:MM'>) -InstanceUrl <Dynamics 365 environment URL> -Message <Retrieve contact,RetrieveMultiple contact,ExportToExcel contact> -EntityName <contact>
 Param(
     [string] [Parameter(Mandatory = $true)]  $AdminUsername,
     [string] [Parameter(Mandatory = $true)]  $AdminPassword,
@@ -46,7 +46,7 @@ Catch {
 [DateTime]$end = $EndDate
 $record = "CRM"
 $resultSize = 5000
-$intervalMinutes = 30
+$intervalMinutes = 360
 
 #Start script
 [DateTime]$currentStart = $start
@@ -77,8 +77,13 @@ while ($true) {
     $currentCount = 0
 
     do {
-        $results = Search-UnifiedAuditLog -StartDate $currentStart -EndDate $currentEnd -RecordType $record -SessionId $sessionID -SessionCommand ReturnLargeSet -ResultSize $resultSize
-
+        if (-Not [string]::IsNullOrEmpty($Message)) {
+            #Filter the audit log records by Messages
+            $results = Search-UnifiedAuditLog -StartDate $currentStart -EndDate $currentEnd -ObjectIDs $Message -RecordType $record -SessionId $sessionID -SessionCommand ReturnLargeSet -ResultSize $resultSize
+        }
+        else {
+            $results = Search-UnifiedAuditLog -StartDate $currentStart -EndDate $currentEnd -RecordType $record -SessionId $sessionID -SessionCommand ReturnLargeSet -ResultSize $resultSize
+        }
         if (-Not [string]::IsNullOrEmpty($InstanceUrl)) {
             #Filter the audit log records by Instance URL provided
             $results = $results | ? { ($_.AuditData | ConvertFrom-Json).InstanceUrl -eq $instanceUrl }
@@ -87,11 +92,7 @@ while ($true) {
             #Filter the audit log records by EntityName provided
             $results = $results | ? { ($_.AuditData | ConvertFrom-Json).EntityName -eq $EntityName }
         }
-        if (-Not [string]::IsNullOrEmpty($Message)) {
-            #Filter the audit log records by Messages provided and split into array
-            $messages = $Message -split ';'
-            $results = $results | ? { ($_.AuditData | ConvertFrom-Json).Message -in $messages }
-        }
+
         $resultList = @()
         
         foreach ($result in $results) {
