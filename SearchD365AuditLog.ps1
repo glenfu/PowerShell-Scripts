@@ -1,5 +1,5 @@
 # Author: Glen Fu
-# Date: 19/10/2023
+# Date: 27/10/2023
 # Version: 1.0
 # Copyright © Microsoft Corporation.  All Rights Reserved.
 # This code released under the terms of the 
@@ -14,7 +14,7 @@
 # and (iii) to indemnify, hold harmless, and defend Us and Our suppliers from and against any claims or lawsuits, including attorneys’ fees, that arise or result from the use or distribution of the Sample Code 
 
 #SearchD365AuditLog.ps1
-#How to run script: .\SearchD365AuditLog.ps1 -AdminUsername <admin username> -AdminPassword <password> -LogFile <.\AdminLogFile_YYYYMMDDHHMM.txt> -OutputFile <.\AdminOutputFile_YYYYMMDDHHMM.csv> -StartDate (Get-Date<'DD/MM/YYYY HH:MM'>) -EndDate (Get-Date<'DD/MM/YYYY HH:MM'>) -InstanceUrl <Dynamics 365 environment URL> -Message <Retrieve contact,RetrieveMultiple contact,ExportToExcel contact> -EntityName <contact>
+#How to run script: .\SearchD365AuditLog.ps1 -AdminUsername <admin username> -AdminPassword <password> -LogFile <.\AdminLogFile_YYYYMMDDHHMM.txt> -OutputFile <.\AdminOutputFile_YYYYMMDDHHMM.csv> -StartDate (Get-Date<'DD/MM/YYYY HH:MM'>) -EndDate (Get-Date<'DD/MM/YYYY HH:MM'>) -SearchTerm <domain name> -Message <Retrieve contact,RetrieveMultiple contact,ExportToExcel contact> -InstanceUrl <Dynamics 365 environment URL> -EntityName <contact> -AuditMessage <Retrieve;RetrieveMultiple;ExportToExcel>
 Param(
     [string] [Parameter(Mandatory = $true)]  $AdminUsername,
     [string] [Parameter(Mandatory = $true)]  $AdminPassword,
@@ -22,9 +22,11 @@ Param(
     [string] [Parameter(Mandatory = $true)]  $OutputFile,
     [DateTime] [Parameter(Mandatory = $true)]  $StartDate,
     [DateTime] [Parameter(Mandatory = $true)]  $EndDate,
-    [string] [Parameter(Mandatory = $false)]  $InstanceUrl,
+    [string] [Parameter(Mandatory = $false)]  $SearchTerm,
     [string] [Parameter(Mandatory = $false)]  $Message,
-    [string] [Parameter(Mandatory = $false)]  $EntityName
+    [string] [Parameter(Mandatory = $false)]  $InstanceUrl,
+    [string] [Parameter(Mandatory = $false)]  $EntityName,
+    [string] [Parameter(Mandatory = $false)]  $AuditMessage
 )
 
 # Required Modules (installed as admin)
@@ -46,7 +48,7 @@ Catch {
 [DateTime]$end = $EndDate
 $record = "CRM"
 $resultSize = 5000
-$intervalMinutes = 360
+$intervalMinutes = 30
 
 #Start script
 [DateTime]$currentStart = $start
@@ -81,6 +83,9 @@ while ($true) {
             #Filter the audit log records by Messages
             $results = Search-UnifiedAuditLog -StartDate $currentStart -EndDate $currentEnd -ObjectIDs $Message -RecordType $record -SessionId $sessionID -SessionCommand ReturnLargeSet -ResultSize $resultSize
         }
+        elseif (-Not[string]::IsNullOrEmpty($SearchTerm)) {
+            $results = Search-UnifiedAuditLog -StartDate $currentStart -EndDate $currentEnd -FreeText $SearchTerm -RecordType $record -SessionId $sessionID -SessionCommand ReturnLargeSet -ResultSize $resultSize
+        }
         else {
             $results = Search-UnifiedAuditLog -StartDate $currentStart -EndDate $currentEnd -RecordType $record -SessionId $sessionID -SessionCommand ReturnLargeSet -ResultSize $resultSize
         }
@@ -91,6 +96,11 @@ while ($true) {
         if (-Not [string]::IsNullOrEmpty($EntityName)) {
             #Filter the audit log records by EntityName provided
             $results = $results | ? { ($_.AuditData | ConvertFrom-Json).EntityName -eq $EntityName }
+        }
+        if (-Not [string]::IsNullOrEmpty($AuditMessage)) {
+            #Filter the audit log records by Messages provided and split into array
+            $messages = $AuditMessage -split ';'
+            $results = $results | ? { ($_.AuditData | ConvertFrom-Json).Message -in $messages }
         }
 
         $resultList = @()
