@@ -1,5 +1,5 @@
 # Author: Glen Fu
-# Date: 27/10/2023
+# Date: 06/11/2023
 # Version: 1.0
 # Copyright © Microsoft Corporation.  All Rights Reserved.
 # This code released under the terms of the 
@@ -48,7 +48,7 @@ Catch {
 [DateTime]$end = $EndDate
 $record = "CRM"
 $resultSize = 5000
-$intervalMinutes = 30
+$intervalMinutes = 15
 
 #Start script
 [DateTime]$currentStart = $start
